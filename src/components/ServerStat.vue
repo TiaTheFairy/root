@@ -24,14 +24,14 @@
                     <el-descriptions-item :label-style="desc_style">
                         <template slot="label"><i class="el-icon-connection"></i>检测玩家数</template>
                         <div v-if="list.length < 2">
-                            <el-tag type="danger">接口抓取异常! 正在重试...</el-tag>
+                            <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
                         </div>
                         <div v-else>{{ info.players.online }} / {{ info.players.max }}</div>
                     </el-descriptions-item>
                     <el-descriptions-item :label-style="desc_style">
                         <template slot="label"><i class="el-icon-user"></i>部分在线玩家</template>
                         <div v-if="list.length < 2">
-                            <el-tag type="danger">接口抓取异常! 正在重试...</el-tag>
+                            <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
                         </div>
                         <div v-else>
                             <span v-for="item in list" :key="item.name_raw">
@@ -66,7 +66,9 @@ export default {
                 'text-align': 'center',
                 'color': 'black'
             },
-            autoRefresh: null
+            autoRefresh: null,
+            autoRetry: null,
+            listDenied: false
         }
     },
     methods: {
@@ -94,8 +96,26 @@ export default {
                 this.isLoading = false;
 
                 this.list = this.info.players.list.filter(item => item.uuid == "")
+                if (this.list.length == 0) {
+                    this.listDenied = true;
+                }
+                else {
+                    this.listDenied = false;
+                    this.autoRetry = null;
+                }
             } catch (error) {
                 console.error('There was a problem with the fetch operation:', error);
+            }
+        },
+        autoGet() {
+            if (this.listDenied) {
+                clearInterval(this.autoRefresh);
+                this.autoRetry = setInterval(() => {
+                    this.getInfo();
+                }, 10000);
+            }
+            if (!this.isLoading && !this.listDenied) {
+                this.getInfo(true);
             }
         }
     },
@@ -103,9 +123,7 @@ export default {
         this.getInfo();
 
         this.autoRefresh = setInterval(() => {
-            if (!this.isLoading) {
-                this.getInfo(true);
-            }
+            this.autoGet();
         }, 500)
     }
 }
