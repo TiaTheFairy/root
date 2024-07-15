@@ -35,7 +35,7 @@
 
                     <el-descriptions-item :label-style="desc_style" v-if="info.online">
                         <template slot="label"><i class="el-icon-connection"></i>检测玩家数</template>
-                        <div v-if="list.length < 2">
+                        <div v-if="listDenied">
                             <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
                         </div>
                         <div v-else>{{ info.players.online }} / {{ info.players.max }}</div>
@@ -43,14 +43,14 @@
 
                     <el-descriptions-item :label-style="desc_style" v-if="info.online">
                         <template slot="label"><i class="el-icon-user"></i>部分在线玩家</template>
-                        <div v-if="list.length < 2">
+                        <div v-if="listDenied">
                             <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
                         </div>
                         <div v-else>
                             <span v-for="item in list" :key="item.name_raw">
                                 <el-tag class="player" @click="clickName(item.name_raw)">{{ item.name_raw }}</el-tag>
                             </span>
-                            <el-tag class="player">......</el-tag>
+                            <el-tag class="player" v-if="list.length < info.players.online">......</el-tag>
                         </div>
 
                     </el-descriptions-item>
@@ -110,7 +110,7 @@ export default {
                 this.isLoading = false;
 
                 this.list = this.info.players.list.filter(item => item.uuid == "")
-                if (this.list.length == 0) {
+                if (this.info.players.list.length != 0 && this.list.length == 0) {
                     this.listDenied = true;
                 }
                 else {
