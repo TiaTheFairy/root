@@ -17,10 +17,10 @@
                         <div v-if="info.online">
                             <el-tag type="success">在线</el-tag>
                         </div>
-                        <div v-else><el-tag type="danger">服务器正在日常重启/维护中</el-tag></div>
+                        <div v-else><el-tag type="danger">服务器离线</el-tag></div>
                     </el-descriptions-item>
 
-                    <el-descriptions-item :label-style="desc_style" v-if="info.online">
+                    <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-c-scale-to-original"></i>MOTD</template>
                         <div>
                             <el-image style="width: 30px; height: 30px" :src="info.icon" /> &nbsp;
@@ -28,12 +28,12 @@
                         </div>
                     </el-descriptions-item>
 
-                    <el-descriptions-item :label-style="desc_style" v-if="info.online">
+                    <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-magic-stick"></i>版本号</template>
                         <div v-html="info.version.name_html"></div>
                     </el-descriptions-item>
 
-                    <el-descriptions-item :label-style="desc_style" v-if="info.online">
+                    <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-connection"></i>检测玩家数</template>
                         <div v-if="listDenied">
                             <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
@@ -41,18 +41,26 @@
                         <div v-else>{{ info.players.online }} / {{ info.players.max }}</div>
                     </el-descriptions-item>
 
-                    <el-descriptions-item :label-style="desc_style" v-if="info.online">
+                    <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-user"></i>部分在线玩家</template>
                         <div v-if="listDenied">
                             <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
                         </div>
                         <div v-else>
                             <span v-for="item in list" :key="item.name_raw">
-                                <el-tag class="player" @click="clickName(item.name_raw)">{{ item.name_raw }}</el-tag>
+                                <el-tag class="player" @click="clickName(item.name_raw)">{{ item.name_raw }} ({{
+            item.uuid }})</el-tag>
                             </span>
                             <el-tag class="player" v-if="list.length < info.players.online">......</el-tag>
                         </div>
 
+                    </el-descriptions-item>
+
+                    <el-descriptions-item :label-style="desc_style" v-if="queryBlock">
+                        <template slot="label"><i class="el-icon-user">盗版服务器, 禁止查询</i></template>
+                        <div v-if="listDenied">
+                            <el-tag type="danger">请注意，开设盗版服务器属于违法行为！</el-tag>
+                        </div>
                     </el-descriptions-item>
                 </el-descriptions>
             </div>
@@ -82,7 +90,8 @@ export default {
             },
             autoRefresh: null,
             autoRetry: null,
-            listDenied: false
+            listDenied: false,
+            queryBlock: false,
         }
     },
     methods: {
@@ -101,24 +110,39 @@ export default {
             this.isLoading = true;
             try {
                 const response = await fetch('https://api.mcstatus.io/v2/status/java/' + this.serverip);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
+
                 const data = await response.json();
                 this.info = data;
                 this.loading = false;
                 this.isLoading = false;
 
-                this.list = this.info.players.list.filter(item => item.uuid == "")
-                if (this.info.players.list.length != 0 && this.list.length == 0) {
-                    this.listDenied = true;
-                }
-                else {
-                    this.listDenied = false;
-                    clearInterval(this.autoRetry);
+                if (this.info.online) {
+                    this.list = this.info.players.list.filter(item => !item.name_raw.includes('§'))
+                    if (this.info.players.list.length != 0 && this.list.length == 0) {
+                        this.listDenied = true;
+                    }
+                    else {
+                        this.listDenied = false;
+                        clearInterval(this.autoRetry);
+
+                        this.list.forEach(async item => {
+                            const response = await fetch('https://api.mojang.com/user/profile/agent/minecraft/name/' + item.name_clean);
+                            console.log(response);
+
+                            const data = await response.json();
+                            if (data.id == null) {
+                                this.queryBlock = true;
+                            }
+                            else {
+                                item.uuid = data.id;
+                            }
+
+                        })
+
+                    }
                 }
             } catch (error) {
-                console.error('There was a problem with the fetch operation:', error);
+                this.queryBlock = true;
             }
         },
         autoGet() {
@@ -138,7 +162,7 @@ export default {
 
         this.autoRefresh = setInterval(() => {
             this.autoGet();
-        }, 500)
+        }, 5000)
     }
 }
 </script>
