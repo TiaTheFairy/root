@@ -35,21 +35,18 @@
 
                     <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-connection"></i>检测玩家数</template>
-                        <div v-if="listDenied">
-                            <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
-                        </div>
-                        <div v-else>{{ info.players.online }} / {{ info.players.max }}</div>
+                        <div>{{ info.players.online }} / {{ info.players.max }}</div>
                     </el-descriptions-item>
 
                     <el-descriptions-item :label-style="desc_style" v-if="info.online && !queryBlock">
                         <template slot="label"><i class="el-icon-user"></i>部分在线玩家</template>
                         <div v-if="listDenied">
-                            <el-tag type="danger">接口获取过于频繁, 请求被拒绝! 正在重试...</el-tag>
+                            <el-tag type="danger">无法从第三方接口获取数据, 正在重试... (这不是服务器原因!)</el-tag>
                         </div>
                         <div v-else>
-                            <span v-for="item in list" :key="item.name_raw">
-                                <el-tag class="player" @click="clickName(item.name_raw)">{{ item.name_raw }} ({{
-            item.uuid }})</el-tag>
+                            <span v-for="item in list" :key="item.name">
+                                <el-tag class="player" @click="clickName(item.name)">{{ item.name }} (UUID: {{ item.uuid
+                                    }})</el-tag>
                             </span>
                             <el-tag class="player" v-if="list.length < info.players.online">......</el-tag>
                         </div>
@@ -74,6 +71,7 @@
 </template>
 
 <script>
+// import axios from 'axios';
 export default {
     name: "ServerStatus",
     data() {
@@ -117,28 +115,34 @@ export default {
                 this.isLoading = false;
 
                 if (this.info.online) {
-                    this.list = this.info.players.list.filter(item => !item.name_raw.includes('§'))
+                    this.list = [];
+                    this.info.players.list.forEach(item => {
+                        if (!item.name_raw.includes('§')) {
+                            this.list.push({
+                                name: item.name_raw
+                            })
+                        }
+                    })
+
+                    console.log(this.list);
                     if (this.info.players.list.length != 0 && this.list.length == 0) {
                         this.listDenied = true;
                     }
+
                     else {
                         this.listDenied = false;
                         clearInterval(this.autoRetry);
 
-                        this.list.forEach(async item => {
-                            const response = await fetch('https://api.mojang.com/user/profile/agent/minecraft/name/' + item.name_clean);
-                            console.log(response);
-
-                            const data = await response.json();
-                            if (data.id == null) {
-                                this.queryBlock = true;
-                            }
-                            else {
-                                item.uuid = data.id;
-                            }
-
-                        })
-
+                        // try {
+                        //     const response = await axios.post('https://api.minecraftservices.com/minecraft/profile/lookup/bulk/byname/', this.list.map(item => item.name), {
+                        //         headers: {
+                        //             'Content-Type': 'application/json',
+                        //         },
+                        //     });
+                        //     console.log(response);
+                        // } catch (error) {
+                        //     console.log(error);
+                        // }
                     }
                 }
             } catch (error) {

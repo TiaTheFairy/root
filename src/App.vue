@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import MainFrame from './components/MainFrame.vue'
+import MainFrame from './components/frames/MainFrame.vue'
 
 export default {
   name: 'App',
