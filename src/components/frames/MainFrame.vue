@@ -72,11 +72,22 @@ export default {
         this.jumpTo(id);
       }
     },
+    ruleInitPush() {
+      const url = window.location.pathname;
+      const routes = ['/rule'];
+      if (routes.includes(url)) {
+        this.$router.push({
+          path: url
+        });
+      }
+    }
   },
   mounted() {
     window.addEventListener("scroll", this.headerScroll);
 
     this.$bus.$on("routerSwitch", this.routerSwitch);
+
+    this.ruleInitPush();
   },
   beforeDestroy() {
     this.$bus.$off("routerSwitch");
