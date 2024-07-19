@@ -87,7 +87,7 @@ export default {
 
     this.$bus.$on("routerSwitch", this.routerSwitch);
 
-    this.ruleInitPush();
+    // this.ruleInitPush();
   },
   beforeDestroy() {
     this.$bus.$off("routerSwitch");
